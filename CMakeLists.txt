@@ -12,7 +12,8 @@ add_executable(GraphMaker
         vendor/imgui/imgui_demo.cpp
         vendor/imgui/imgui_tables.cpp
         vendor/imgui/imgui_impl_sdl2.cpp
-        vendor/imgui/imgui_impl_sdlrenderer.cpp src/vertex.cpp src/vertex.h src/edge.cpp src/edge.h src/graph.cpp src/graph.h)
+        vendor/imgui/imgui_impl_sdlrenderer.cpp
+        )
 
 target_link_libraries(${PROJECT_NAME}
         ${CMAKE_SOURCE_DIR}/vendor/sdl/lib/libSDL2.dll.a)
