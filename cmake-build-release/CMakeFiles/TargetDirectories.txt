@@ -1,3 +1,0 @@
-C:/Projects/c++/GraphMaker/cmake-build-release/CMakeFiles/GraphMaker.dir
-C:/Projects/c++/GraphMaker/cmake-build-release/CMakeFiles/edit_cache.dir
-C:/Projects/c++/GraphMaker/cmake-build-release/CMakeFiles/rebuild_cache.dir
