@@ -6,14 +6,14 @@ set(CMAKE_CXX_FLAGS "-static-libgcc -static-libstdc++ -static")
 
 add_executable(GraphMaker
         src/main.cpp
+        src/graph.cpp
         vendor/imgui/imgui.cpp
         vendor/imgui/imgui_draw.cpp
         vendor/imgui/imgui_widgets.cpp
         vendor/imgui/imgui_demo.cpp
         vendor/imgui/imgui_tables.cpp
         vendor/imgui/imgui_impl_sdl2.cpp
-        vendor/imgui/imgui_impl_sdlrenderer.cpp
-        )
+        vendor/imgui/imgui_impl_sdlrenderer.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         ${CMAKE_SOURCE_DIR}/vendor/sdl/lib/libSDL2.dll.a)

@@ -1,84 +1,13 @@
+#define IMGUI_DEFINE_MATH_OPERATORS
+
 #include <cstdio>
 #include <string>
-#include <vector>
-#include "imgui.h"
-#include "imgui_impl_sdl2.h"
-#include "imgui_impl_sdlrenderer.h"
+#include "main.h"
+#include "vertex.h"
+#include "edge.h"
+#include "graph.h"
 
-#define SDL_MAIN_HANDLED
-
-#include "SDL.h"
-
-const int SCREEN_WIDTH = 1280;
-const int SCREEN_HEIGHT = 720;
-
-const int VERTEX_SIZE = 12;
-const int VERTEX_ROUNDING = 4;
-const int EDGE_THICKNESS = 3;
-
-const ImColor VERTEX_COLOR = ImColor(255, 128, 0, 255);
-const ImColor EDGE_COLOR = ImColor(255, 255, 0, 255);
-const ImColor CANVAS_COLOR = ImColor(50, 50, 50, 255);
-const ImColor GRID_COLOR = ImColor(100, 100, 100, 255);
-const ImColor SHADOW_COLOR = ImColor(0, 0, 0, 50);
-
-struct Vertex {
-    int id;
-    ImVec2 pos;
-    ImColor color;
-};
-
-struct Edge {
-    Vertex v1;
-    Vertex v2;
-    ImColor color;
-};
-
-struct Graph {
-    ImVector<Vertex> vertices;
-    ImVector<Edge> edges;
-};
-
-bool init(SDL_Window *&window, SDL_Renderer *&renderer) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
-        return false;
-    }
-    SDL_WindowFlags window_flags = (SDL_WindowFlags) (SDL_WINDOW_ALLOW_HIGHDPI);
-    window = SDL_CreateWindow("GraphMaker", SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
-    if (renderer == nullptr) {
-        return false;
-    }
-    return true;
-}
-
-void imgui_setup(SDL_Window *&window, SDL_Renderer *&renderer) {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer_Init(renderer);
-}
-
-void render(SDL_Renderer *&renderer, ImGuiIO &io) {
-    ImGui::Render();
-    SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
-    SDL_RenderPresent(renderer);
-}
-
-void cleanup(SDL_Window *&window, SDL_Renderer *&renderer) {
-    ImGui_ImplSDLRenderer_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-}
-
+#include "imgui_internal.h"
 
 void add_vertex(Graph &graph, ImVec2 canvas_size) {
     ImGui::InvisibleButton("canvas", canvas_size, ImGuiButtonFlags_MouseButtonLeft);
@@ -102,27 +31,25 @@ void add_edge(Graph &graph) {
         ImGui::InvisibleButton("##vertex", ImVec2(VERTEX_SIZE * 2, VERTEX_SIZE * 2), ImGuiButtonFlags_MouseButtonLeft);
         bool vertex_hovered = ImGui::IsItemHovered();
         static bool adding_edge = false;
-        static Vertex v1;
+        static Vertex *from;
 
         if (vertex_hovered && !adding_edge && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            v1 = vertex;
+            from = &vertex;
             adding_edge = true;
-
         }
-
         if (adding_edge && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             bool already_exists = false;
 
-            for (auto &v2: graph.vertices) {
-                ImGui::SetCursorScreenPos(ImVec2(v2.pos.x - VERTEX_SIZE, v2.pos.y - VERTEX_SIZE));
-                ImGui::InvisibleButton("##v2", ImVec2(VERTEX_SIZE * 2, VERTEX_SIZE * 2),
+            for (auto &to: graph.vertices) {
+                ImGui::SetCursorScreenPos(ImVec2(to.pos.x - VERTEX_SIZE, to.pos.y - VERTEX_SIZE));
+                ImGui::InvisibleButton("##to", ImVec2(VERTEX_SIZE * 2, VERTEX_SIZE * 2),
                                        ImGuiButtonFlags_MouseButtonLeft);
                 bool v2_hovered = ImGui::IsItemHovered();
 
-                if (v2_hovered && v2.id != v1.id) {
+                if (v2_hovered && to.id != from->id) {
                     for (auto &edge: graph.edges) {
-                        if ((edge.v1.id == v1.id && edge.v2.id == v2.id) ||
-                            (edge.v1.id == v2.id && edge.v2.id == v1.id)) {
+                        if ((edge.from->id == from->id && edge.to->id == to.id) ||
+                            (edge.from->id == to.id && edge.to->id == from->id)) {
                             already_exists = true;
                             break;
                         }
@@ -130,9 +57,10 @@ void add_edge(Graph &graph) {
                     if (already_exists) {
                         break;
                     }
-                    Edge edge = {v1, v2, EDGE_COLOR};
+
+                    Edge edge = {from, &to, EDGE_COLOR};
                     graph.edges.push_back(edge);
-                    printf("Edge added: %d -> %d\n", v1.id, v2.id);
+                    printf("Edge added: %d -> %d\n", from->id, to.id);
                     break;
                 }
             }
@@ -140,7 +68,6 @@ void add_edge(Graph &graph) {
         }
     }
 }
-
 
 void move(Graph &graph) {
     for (auto &vertex: graph.vertices) {
@@ -158,11 +85,11 @@ void move(Graph &graph) {
             v1->pos = ImGui::GetMousePos();
             // update edges
             for (auto &edge: graph.edges) {
-                if (edge.v1.id == v1->id) {
-                    edge.v1.pos = v1->pos;
+                if (edge.from->id == v1->id) {
+                    edge.from->pos = v1->pos;
                 }
-                if (edge.v2.id == v1->id) {
-                    edge.v2.pos = v1->pos;
+                if (edge.to->id == v1->id) {
+                    edge.to->pos = v1->pos;
                 }
             }
         }
@@ -214,14 +141,22 @@ int main() {
             ImGui::SetNextItemWidth(120);
             ImGui::Combo("Mode", &current_mode, modes, IM_ARRAYSIZE(modes));
 
+            ImGui::SameLine();
+            if (ImGui::Button("Clear Canvas", ImVec2(120, 0))) {
+                graph.vertices.clear();
+                graph.edges.clear();
+            }
+
             static const char *algorithms[] = {"BFS", "DFS"};
             static int current_algorithm = 0;
+            ImGui::SameLine();
             ImGui::SetNextItemWidth(120);
             ImGui::Combo("Algorithm", &current_algorithm, algorithms, IM_ARRAYSIZE(algorithms));
 
             static Vertex *start_vertex = nullptr;
+            ImGui::SameLine();
             ImGui::SetNextItemWidth(120);
-            if (ImGui::BeginCombo("Start", start_vertex ? std::to_string(start_vertex->id).c_str() : "None")) {
+            if (ImGui::BeginCombo("Start Vertex", start_vertex ? std::to_string(start_vertex->id).c_str() : "None")) {
                 for (auto &vertex: graph.vertices) {
                     if (ImGui::Selectable(std::to_string(vertex.id).c_str())) {
                         start_vertex = &vertex;
@@ -233,14 +168,27 @@ int main() {
                 start_vertex = nullptr;
             }
 
-            if (ImGui::Button("Clear", ImVec2(120, 0))) {
-                graph.vertices.clear();
-                graph.edges.clear();
+            ImGui::SameLine();
+            if (ImGui::Button("Reset", ImVec2(120, 0))) {
+                graph.reset();
             }
 
+            ImGui::SameLine();
             if (ImGui::Button("Run", ImVec2(120, 0))) {
+                if (current_algorithm == 0) {
+                    graph.bfs(start_vertex);
+                } else if (current_algorithm == 1) {
+                    graph.dfs(start_vertex);
+                }
 
+                // color non-visited vertices red
+                for (auto &vertex: graph.vertices) {
+                    if (!vertex.visited) {
+                        vertex.color = NON_VISITED_COLOR;
+                    }
+                }
             }
+            ImGui::Spacing();
 
             // draw canvas
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
@@ -265,11 +213,27 @@ int main() {
 
             // draw edges
             for (auto &edge: graph.edges) {
-                draw_list->AddLine(ImVec2(edge.v1.pos.x, edge.v1.pos.y + 2),
-                                   ImVec2(edge.v2.pos.x, edge.v2.pos.y + 2),
+                // line
+                draw_list->AddLine(ImVec2(edge.from->pos.x, edge.from->pos.y + 2),
+                                   ImVec2(edge.to->pos.x, edge.to->pos.y + 2),
                                    SHADOW_COLOR,
                                    EDGE_THICKNESS);
-                draw_list->AddLine(edge.v1.pos, edge.v2.pos, edge.color, EDGE_THICKNESS);
+                draw_list->AddLine(edge.from->pos, edge.to->pos, edge.color, EDGE_THICKNESS);
+                // arrow
+                ImVec2 edge_dir = edge.to->pos - edge.from->pos;
+                ImVec2 edge_dir_norm = edge_dir / sqrt(edge_dir.x * edge_dir.x + edge_dir.y * edge_dir.y);
+                ImVec2 edge_dir_perp = ImVec2(-edge_dir_norm.y, edge_dir_norm.x);
+                ImVec2 arrow_pos = edge.from->pos + edge_dir * 0.5f;
+                draw_list->AddTriangleFilled(
+                        arrow_pos + edge_dir_perp * 10.0f + ImVec2(0, 2),
+                        arrow_pos - edge_dir_perp * 10.0f + ImVec2(0, 2),
+                        arrow_pos + edge_dir_norm * 20.0f + ImVec2(0, 2),
+                        SHADOW_COLOR);
+                draw_list->AddTriangleFilled(
+                        arrow_pos + edge_dir_perp * 10.0f,
+                        arrow_pos - edge_dir_perp * 10.0f,
+                        arrow_pos + edge_dir_norm * 20.0f,
+                        edge.color);
             }
 
             // draw vertices
@@ -311,8 +275,6 @@ int main() {
             }
         }
         ImGui::End();
-
-        ImGui::ShowDemoWindow();
 
         render(renderer, io);
     }
