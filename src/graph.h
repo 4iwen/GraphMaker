@@ -9,9 +9,9 @@ public:
     ImVector<Vertex> vertices;
     ImVector<Edge> edges;
 
-    void bfs(Vertex *start);
+    ImVector<Vertex *> bfs(Vertex *start);
 
-    void dfs(Vertex *start);
+    ImVector<Vertex *> dfs(Vertex *start);
 
     void reset();
 };

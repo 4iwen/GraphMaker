@@ -2,58 +2,69 @@
 #include <cstdio>
 #include <stack>
 #include "graph.h"
-#include "SDL_timer.h"
 
-void Graph::bfs(Vertex *start) {
+ImVector<Vertex *> Graph::bfs(Vertex *start) {
     if (start == nullptr) {
-        return;
+        return {};
     }
 
     std::queue<Vertex *> queue;
     start->visited = true;
-    start->color = VISITED_COLOR;
     queue.push(start);
+
+    ImVector<Vertex *> path;
 
     printf("BFS\n");
     while (!queue.empty()) {
         Vertex *current = queue.front();
         printf("%d\n", current->id);
         queue.pop();
+        path.push_back(current);
 
         for (auto &edge : edges) {
             if (edge.from->id == current->id && !edge.to->visited) {
                 edge.to->visited = true;
-                edge.to->color = VISITED_COLOR;
                 queue.push(edge.to);
             }
         }
     }
+
+    return path;
 }
 
-void Graph::dfs(Vertex *start) {
+ImVector<Vertex *> Graph::dfs(Vertex *start) {
     if (start == nullptr) {
-        return;
+        return {};
     }
 
     std::stack<Vertex *> stack;
     start->visited = true;
-    start->color = VISITED_COLOR;
     stack.push(start);
+
+    ImVector<Vertex *> path;
 
     printf("DFS\n");
     while (!stack.empty()) {
         Vertex *current = stack.top();
         printf("%d\n", current->id);
         stack.pop();
+        path.push_back(current);
 
         for (auto &edge : edges) {
             if (edge.from->id == current->id && !edge.to->visited) {
                 edge.to->visited = true;
-                edge.to->color = VISITED_COLOR;
                 stack.push(edge.to);
             }
         }
     }
+
+    // print the path
+    printf("Path:\n");
+    for (auto &vertex : path) {
+        printf("%d\n", vertex->id);
+    }
+
+    return path;
 }
 
 void Graph::reset() {
