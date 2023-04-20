@@ -93,6 +93,12 @@ int main() {
                     path = graph.dfs(start_vertex);
                 }
             }
+
+            static int speed = 60;
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("Speed").x - 10);
+            ImGui::SliderInt("Speed", &speed, 1, 60, "%d");
+
             ImGui::Spacing();
 
             // go through the path each second and highlight the vertices
@@ -102,7 +108,7 @@ int main() {
                     path_index++;
                 }
             }
-            path_timer = (path_timer + 1) % 60;
+            path_timer = (path_timer + 1) % speed;
 
             // draw
             ImVec2 canvas_size = ImGui::GetContentRegionAvail();
